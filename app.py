@@ -5,6 +5,9 @@ from flask_sqlalchemy import SQLAlchemy
 import os
 import sys
 import click
+from flask import request
+from flask import redirect
+from flask import flash
 
 
 WIN = sys.platform.startswith('win')
@@ -16,6 +19,7 @@ else:
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI']=prefix+os.path.join(app.root_path,'data.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS']=False
+app.config['SECRET_KEY']='dev'
 db=SQLAlchemy(app)
 
 
@@ -53,10 +57,20 @@ def initdb(drop):
     db.create_all()
     click.echo('Initialized database.')
 
-@app.route('/')
+@app.route('/',methods=['GET','POST'])
 def index():
+    if request.method=='POST':
+        title=request.form.get('title')
+        year=request.form.get('year')
+        if not title or not year or len(year)>4 or len(title)>60:
+            flash('Invalid input.')
+            return redirect(url_for('index'))
+        movie=Movie(title=title,year=year)
+        db.session.add(movie)
+        db.session.commit()
+        flash('Item created')
+        return redirect(url_for('index'))        
     movies=Movie.query.all()
-
     return render_template('index.html',movies=movies)
 
 
